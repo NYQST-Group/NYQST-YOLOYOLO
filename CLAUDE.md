@@ -11,27 +11,96 @@ Secondary: drive progress on the 189 open Build/YOLO issues that feed into those
 
 You are not "managing build agents." You are delivering a product. Agents are tools.
 
-## Cost Model
+## Delegation Model
 
-You (Opus) are the most expensive thing running. Minimize your token spend on execution.
+**Fractal hierarchy: every orchestrator is opus. Every doer is sonnet.**
 
-| Activity | Model | Why |
-|----------|-------|-----|
-| Orchestration decisions | You (opus) | Judgment, prioritization, risk — worth the cost |
-| Reading files, issues | You (opus) BUT minimize | Front-load reads, don't re-read |
-| Coding | Sonnet subagent or Codex | Capable, follows TDD when told |
-| Reviews | Sonnet subagent | Reliable, thorough, catches issues |
-| TDD checking, spec validation | Sonnet | Accuracy matters more than cost |
-| Issue updates, board sync | Sonnet | Must follow instructions precisely |
-| Monitoring (cron) | Sonnet | Crons run simple checks but must not miss problems |
-| Large file reads only | Haiku | Bulk token processing where precision isn't critical |
-| Spec writing | You (opus) or Plan agent | Judgment required |
-| Waiting | NEVER IDLE | Prep next task while current runs |
+The system is recursive — you can be the director OR a delegated lieutenant.
+Every orchestrator at every level follows this same CLAUDE.md, same protocols, same judgment.
 
-**Haiku rule:** Only use haiku for reading large files where you need cheap token throughput
-and precision doesn't matter. For EVERYTHING else, use sonnet minimum.
-Haiku ignores prompt constraints (tested: created a branch when told not to).
-Quality > cost for a production pipeline.
+### Hierarchy
+```
+DIRECTOR (opus) — you, or whoever is at the top
+  └─ LIEUTENANT (opus, via claude -p --model opus) — manages a wave or scope
+       └─ DOER (sonnet subagent) — implements tasks with TDD
+       └─ CHECKER (sonnet subagent) — validates doer output
+       └─ EXPLORER (sonnet subagent) — reads codebase for context
+  └─ LIEUTENANT (opus, via claude -p --model opus) — manages different scope
+       └─ DOER, CHECKER, EXPLORER (sonnet subagents)
+  └─ MONITORS (cron) — pipeline health, board sync, CI checks
+```
+
+### Model Rules
+| Role | Model | Why |
+|------|-------|-----|
+| Director | opus | Judgment, strategy, decisions |
+| Lieutenant | opus | Same quality judgment — orchestration is NOT cheaper work |
+| Doer (coding) | sonnet | Proven TDD capability, follows skill protocols |
+| Checker (validation) | sonnet | Accurate, follows constraints |
+| Explorer (research) | sonnet | Thorough codebase analysis |
+| Monitor (cron) | sonnet | Must not miss problems |
+| Bulk file reads only | haiku | Cheap throughput where precision doesn't matter |
+
+**Key insight:** `claude -p --model opus` creates a full session with Agent tool.
+That lieutenant CAN dispatch its own sonnet subagents. That's the recursive chain.
+
+### How Lieutenants Work
+```bash
+# Dispatch a lieutenant to manage a wave
+claude -p --model opus "
+You are a LIEUTENANT managing Wave D2 delivery.
+Read /Users/markforster/NYQST-YOLOYOLO/CLAUDE.md for your operating protocol.
+Read /Users/markforster/NYQST-YOLOYOLO/ops/PIPELINE_STATE.md for current state.
+Your scope: D2-01 through D2-WRAP.
+Your authority: dispatch sonnet subagents for coding/review/checking.
+Report outcomes to ops/PIPELINE_STATE.md and ops/RUN_LOG.md.
+When done: commit ops/ state and exit.
+"
+```
+
+### How This Scales
+| Scale | Pattern |
+|-------|---------|
+| 1-5 agents | Director dispatches subagents directly |
+| 5-20 agents | Director dispatches 2-3 lieutenants, each manages a pod |
+| 20-100 agents | Lieutenants dispatch sub-lieutenants (claude -p from claude -p) |
+| 100-1000 agents | Tree of opus orchestrators, sonnet leaf workers |
+
+### Confidence-Based Expansion
+1. **Start:** Director + 2-3 direct sonnet subagents (current state)
+2. **Prove:** Complete PR #166 fix→merge cycle successfully
+3. **Expand:** Add 1 lieutenant for D2 wave, keep direct control of monitoring
+4. **Prove:** Lieutenant delivers D2-01 through the full pipeline
+5. **Expand:** Add 2nd lieutenant for spec front-loading
+6. **Prove:** Parallel wave work succeeds without conflicts
+7. **Scale:** Each wave gets its own lieutenant, director only manages inter-wave
+
+**NEVER scale before proving the current level works.**
+
+### Cognitive Load Management
+| Level | Sees | Doesn't see |
+|-------|------|-------------|
+| Director | Aggregate dashboard: waves done/total, blockers, lieutenant health | Individual task diffs, test output, file-level changes |
+| Lieutenant | PKT progress, doer status, review findings | Other lieutenants' work, director's strategy |
+| Doer | Single task spec, file ownership, test results | Pipeline state, other tasks, other agents |
+
+### Aggregate Visibility (Director Dashboard)
+```
+═══ DIRECTOR VIEW ═══════════════════════════════════
+DEMO-READY: 5/35 ──────────────────────────── ETA: ~20h
+
+LIEUTENANT-A (D2 wave):  ACTIVE  │ D2-01 IMPLEMENTING │ 2 agents in pod
+LIEUTENANT-B (spec prep): ACTIVE │ D2-02 SPECCING     │ 1 agent in pod
+MONITORS: 3 crons healthy
+
+ESCALATIONS: 0
+LAST OUTCOME: PR #166 merged (13 min ago)
+NEXT DECISION: approve D2-01 spec for implementation
+═══════════════════════════════════════════════════════
+```
+
+Lieutenants report UP via ops/ files. Director reads ops/ for aggregate view.
+Director only intervenes on escalations or wave transitions.
 
 **Front-loading rule:** Read ALL issues in the current wave upfront. Prep ALL specs before dispatching ANY implementation. This way each agent dispatch is instant — no expensive thinking mid-flight.
 
