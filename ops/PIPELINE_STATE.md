@@ -39,7 +39,16 @@ Current state of the build pipeline. Updated after every significant action.
 | G1 Demo guardrails | Inbox | Partial (reporting infra in PR #166) |
 
 ## Uncommitted State
-- Build repo: `CLAUDE.md` modified (test docs update) — needs committing
+- All repos clean as of 2026-03-14 17:45
+
+## DAG (TaskList)
+```
+#1 [pending] Fix C1: format_cost_usd (#167)
+#2 [pending] Fix C2: move raw SQL to repo (#168)
+#3 [pending] Verify fixes [blocked by #1, #2]
+#4 [pending] Review fixes [blocked by #3]
+#5 [pending] Merge PR #166 [blocked by #4]
+```
 
 ## Next Actions (Priority Order)
 
