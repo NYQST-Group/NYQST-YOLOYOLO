@@ -27,7 +27,7 @@ Embed the protocol directly in the prompt. Include: RED→GREEN→REFACTOR steps
 ## Validation Chain
 
 ```
-DOER (follows TDD) → TDD CHECKER (haiku) → SPEC REVIEWER (sonnet) → QUALITY REVIEWER (sonnet) → MERGE
+DOER (follows TDD) → TDD CHECKER (sonnet) → SPEC REVIEWER (sonnet) → QUALITY REVIEWER (sonnet) → MERGE
 ```
 
 If validator fails → re-dispatch doer with feedback.

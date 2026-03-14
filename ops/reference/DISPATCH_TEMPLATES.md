@@ -50,10 +50,10 @@ Agent tool:
   prompt: [use requesting-code-review template with BASE_SHA, HEAD_SHA]
 ```
 
-## TDD checker (haiku, cheap)
+## TDD checker (sonnet, cheap)
 ```
 Agent tool:
-  model: "haiku"
+  model: "sonnet"
   prompt: |
     Read the git diff: cd [repo] && git diff [base]..[head]
     Verify: every new function has a test, tests describe behavior, no code without coverage.

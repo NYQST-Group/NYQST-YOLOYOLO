@@ -19,12 +19,19 @@ You (Opus) are the most expensive thing running. Minimize your token spend on ex
 |----------|-------|-----|
 | Orchestration decisions | You (opus) | Judgment, prioritization, risk — worth the cost |
 | Reading files, issues | You (opus) BUT minimize | Front-load reads, don't re-read |
-| Coding | Sonnet subagent or Codex | Cheaper, proven capable |
-| Reviews | Sonnet subagent | Reliable at probation trust |
-| TDD checking, issue updates | Haiku | Cheapest, fast, proven capable |
-| Monitoring | Haiku via cron | Periodic, tiny cost |
+| Coding | Sonnet subagent or Codex | Capable, follows TDD when told |
+| Reviews | Sonnet subagent | Reliable, thorough, catches issues |
+| TDD checking, spec validation | Sonnet | Accuracy matters more than cost |
+| Issue updates, board sync | Sonnet | Must follow instructions precisely |
+| Monitoring (cron) | Sonnet | Crons run simple checks but must not miss problems |
+| Large file reads only | Haiku | Bulk token processing where precision isn't critical |
 | Spec writing | You (opus) or Plan agent | Judgment required |
 | Waiting | NEVER IDLE | Prep next task while current runs |
+
+**Haiku rule:** Only use haiku for reading large files where you need cheap token throughput
+and precision doesn't matter. For EVERYTHING else, use sonnet minimum.
+Haiku ignores prompt constraints (tested: created a branch when told not to).
+Quality > cost for a production pipeline.
 
 **Front-loading rule:** Read ALL issues in the current wave upfront. Prep ALL specs before dispatching ANY implementation. This way each agent dispatch is instant — no expensive thinking mid-flight.
 
@@ -37,7 +44,7 @@ You (Opus) are the most expensive thing running. Minimize your token spend on ex
 │   4. DISPATCH          send to agent with full context
 │   5. WHILE WAITING     prep the NEXT task (never idle)
 │   6. RECEIVE           auto-notification when agent completes
-│   7. VERIFY            dispatch checker agent (haiku)
+│   7. VERIFY            dispatch checker agent (sonnet)
 │   8. UPDATE STATE      ops/, Project 11 board, GitHub issues
 └── 9. REPEAT
 ```
@@ -45,7 +52,7 @@ You (Opus) are the most expensive thing running. Minimize your token spend on ex
 **Max in-flight:** 2-3 items. More than that = losing track.
 
 **Parallel prep pattern:** While a coding agent works on Task N, dispatch a background
-haiku agent to prep Task N+1 (read issue, identify files, draft spec outline).
+sonnet agent to prep Task N+1 (read issue, identify files, draft spec outline).
 When Task N completes, Task N+1 dispatch is instant — no expensive thinking delay.
 
 **Persistent monitors:** 3 cron jobs + background prep agent should be running at all times.
@@ -138,7 +145,7 @@ Report only problems.
 
 **Background Agent: Prep-Ahead** (dispatch after starting work on current task)
 ```
-While current task agent runs, dispatch a background Explore/haiku agent to:
+While current task agent runs, dispatch a background Explore/sonnet agent to:
 - Read the NEXT issue in the pipeline (from PIPELINE_STATE.md)
 - Summarize acceptance criteria and referenced docs
 - Identify which files will need changing
@@ -148,7 +155,7 @@ This way when the current task finishes, the next dispatch is instant.
 
 **Background Agent: Issue Updater** (dispatch after each merge)
 ```
-After merging a PR, dispatch a haiku agent in background to:
+After merging a PR, dispatch a sonnet agent in background to:
 - Close referenced GitHub issues
 - Update Project 11 item status via gh CLI
 - Post a comment on the YOLO issue linking the merged PR
@@ -355,7 +362,7 @@ Dispatch in parallel:
   2. pr-review-toolkit:review-pr — comprehensive (if trusted)
   3. pr-review-toolkit:pr-test-analyzer — test coverage gaps
 
-Then dispatch a meta-reviewer (haiku, cheap) to verify:
+Then dispatch a meta-reviewer (sonnet, cheap) to verify:
   - Did the reviewers actually check the code (not just say "looks good")?
   - Are severity levels correct?
   - Are file:line references accurate?
@@ -512,8 +519,8 @@ Team: "wave-d2"
 Members:
   - "doer" (general-purpose, sonnet/opus) — implements PKTs sequentially
   - "reviewer" (superpowers:code-reviewer) — reviews each PKT
-  - "tdd-checker" (general-purpose, haiku) — validates TDD compliance
-  - "updater" (general-purpose, haiku) — updates GitHub issues/board after each merge
+  - "tdd-checker" (general-purpose, sonnet) — validates TDD compliance
+  - "updater" (general-purpose, sonnet) — updates GitHub issues/board after each merge
 ```
 
 ## AGENT ROSTER
@@ -541,12 +548,12 @@ Members:
 | `Plan` | Agent tool | untested | YES (read-only tools) |
 | `feature-dev:code-architect` | Agent tool | untested | YES (read-only tools) |
 
-### Checker Agents (validation, cheap)
+### Checker Agents (validation)
 | Agent | Model | Purpose | Trust |
 |-------|-------|---------|-------|
-| TDD compliance checker | haiku | Verify doer followed TDD | **probation** (capability tested) |
+| TDD compliance checker | sonnet | Verify doer followed TDD | untested at sonnet |
 | Spec compliance checker | sonnet | Verify work matches issue | untested |
-| Pipeline health monitor | cron | Drift, stale PRs, uncommitted | active |
+| Pipeline health monitor | cron (sonnet) | Drift, stale PRs, uncommitted | active |
 
 ### Promotion Rules
 - `untested` → `probation`: first successful run
@@ -674,7 +681,7 @@ Key facts (tested):
 
 ### Validation Chain (after every doer completes)
 ```
-DOER (TDD) → TDD CHECKER (haiku) → SPEC REVIEWER (sonnet) → QUALITY REVIEWER (sonnet) → MERGE
+DOER (TDD) → TDD CHECKER (sonnet) → SPEC REVIEWER (sonnet) → QUALITY REVIEWER (sonnet) → MERGE
 ```
 Fail → re-dispatch doer. Fail twice → escalate model. Fail again → escalate to user.
 
