@@ -1,0 +1,35 @@
+[debug] [2026-03-14T16:40:53.156Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-03-14T16:40:53.160Z] > authorizing via signed-in user (maforster@gmail.com)
+[debug] [2026-03-14T16:40:53.161Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-03-14T16:40:53.161Z] > authorizing via signed-in user (maforster@gmail.com)
+[debug] [2026-03-14T16:40:53.161Z] Checked if tokens are valid: false, expires at: 1773489940451
+[debug] [2026-03-14T16:40:53.161Z] Checked if tokens are valid: false, expires at: 1773489940451
+[debug] [2026-03-14T16:40:53.161Z] > refreshing access token with scopes: []
+[debug] [2026-03-14T16:40:53.162Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-03-14T16:40:53.162Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-03-14T16:40:53.181Z] Checked if tokens are valid: false, expires at: 1773489940451
+[debug] [2026-03-14T16:40:53.181Z] Checked if tokens are valid: false, expires at: 1773489940451
+[debug] [2026-03-14T16:40:53.181Z] > refreshing access token with scopes: []
+[debug] [2026-03-14T16:40:53.181Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-03-14T16:40:53.181Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-03-14T16:40:53.182Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-03-14T16:40:53.182Z] > authorizing via signed-in user (maforster@gmail.com)
+[debug] [2026-03-14T16:40:53.182Z] Checked if tokens are valid: false, expires at: 1773489940451
+[debug] [2026-03-14T16:40:53.182Z] Checked if tokens are valid: false, expires at: 1773489940451
+[debug] [2026-03-14T16:40:53.182Z] > refreshing access token with scopes: []
+[debug] [2026-03-14T16:40:53.182Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-03-14T16:40:53.182Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-03-14T16:40:53.552Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-03-14T16:40:53.552Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-03-14T16:40:53.587Z] >>> [apiv2][query] GET https://cloudbilling.googleapis.com/v1/projects/nyqst-ai-regtech-hub/billingInfo [none]
+[debug] [2026-03-14T16:40:53.589Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-03-14T16:40:53.589Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-03-14T16:40:53.611Z] >>> [apiv2][query] GET https://cloudbilling.googleapis.com/v1/projects/nyqst-ai-regtech-hub/billingInfo [none]
+[debug] [2026-03-14T16:40:53.612Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-03-14T16:40:53.613Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-03-14T16:40:53.623Z] >>> [apiv2][query] GET https://cloudbilling.googleapis.com/v1/projects/nyqst-ai-regtech-hub/billingInfo [none]
+[debug] [2026-03-14T16:40:54.347Z] <<< [apiv2][status] GET https://cloudbilling.googleapis.com/v1/projects/nyqst-ai-regtech-hub/billingInfo 403
+[debug] [2026-03-14T16:40:54.347Z] <<< [apiv2][body] GET https://cloudbilling.googleapis.com/v1/projects/nyqst-ai-regtech-hub/billingInfo {"error":{"code":403,"message":"The caller does not have permission","status":"PERMISSION_DENIED"}}
+[debug] [2026-03-14T16:40:54.550Z] <<< [apiv2][status] GET https://cloudbilling.googleapis.com/v1/projects/nyqst-ai-regtech-hub/billingInfo 403
+[debug] [2026-03-14T16:40:54.550Z] <<< [apiv2][body] GET https://cloudbilling.googleapis.com/v1/projects/nyqst-ai-regtech-hub/billingInfo {"error":{"code":403,"message":"The caller does not have permission","status":"PERMISSION_DENIED"}}
+[debug] [2026-03-14T16:40:55.055Z] <<< [apiv2][status] GET https://cloudbilling.googleapis.com/v1/projects/nyqst-ai-regtech-hub/billingInfo 403

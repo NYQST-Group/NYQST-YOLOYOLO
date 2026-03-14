@@ -555,248 +555,99 @@ cd ~/NYQST-DocuIntelli-Build && .venv/bin/python -m ruff check src/ tests/
 - Repository pattern: data access in `repositories/`, business logic in `services/`
 - Async SQLAlchemy everywhere
 
+## DAG Enforcement
+
+Use `TaskCreate` with `blockedBy` to enforce pipeline stage ordering. Never skip.
+
+```
+Task 1: Implement (no blockers — can start)
+Task 2: Implement (no blockers — can parallel with 1 if independent files)
+Task 3: Verify   (blockedBy: [1, 2])
+Task 4: Review   (blockedBy: [3])
+Task 5: Merge    (blockedBy: [4])
+```
+
+Check `TaskList` — if a task has non-empty `blockedBy`, do NOT start it.
+Mark tasks `in_progress` when dispatching, `completed` when verified.
+
+## Recovery Protocol
+
+**If session ends mid-flight:**
+- ops/PIPELINE_STATE.md has current state (always committed before exit)
+- TaskList shows which tasks are pending/in_progress/completed
+- RUN_LOG.md shows what agents were dispatched and their outcomes
+- Next session: read all three, detect incomplete work, re-dispatch
+
+**If agent fails or crashes:**
+- Cannot resume Claude subagents — spawn replacement with same prompt
+- Check git status in the worktree/repo for partial work
+- If partial commit exists, review it before re-dispatching
+- If no commit, re-dispatch from scratch
+
+**If tests break unexpectedly:**
+- Do NOT dispatch a fix agent immediately
+- Dispatch an Explore agent to understand WHY tests broke
+- Then dispatch a fix with root cause context
+
+**Pause protocol (stepping away mid-work):**
+- Commit ops/ state: `git add ops/ && git commit -m "chore: save pipeline state"`
+- Note in PIPELINE_STATE.md: "PAUSED at [stage] — next action: [specific]"
+- Tasks with `in_progress` status show what's still running
+
 ## Ops Tracking System
 
-All state lives in `ops/` — never lose context.
+All state lives in `ops/` — version controlled in this repo.
 
 | File | Purpose | Update |
 |------|---------|--------|
 | `ops/PIPELINE_STATE.md` | Current state, blockers, next actions | After every significant action |
 | `ops/RUN_LOG.md` | Append-only log of every agent dispatch | After every agent run |
 | `ops/AGENT_LEDGER.md` | Agent registry, trust levels, promotions | After evaluating agent output |
+| `ops/reference/SKILL_CHAIN.md` | Skill-to-stage mapping (load on demand) | When skills change |
+| `ops/reference/DISPATCH_TEMPLATES.md` | Agent dispatch prompts (load on demand) | When patterns evolve |
 
-## ═══════════════════════════════════════════
-## SKILL CHAIN: How Skills Map to Pipeline Stages
-## ═══════════════════════════════════════════
+## Skill Chain
 
-Skills are NOT optional decoration. They are the PROTOCOLS that agents must follow.
-Each pipeline stage has a required skill. If a stage doesn't use its skill, it's wrong.
+Skills are the PROTOCOLS agents must follow. Each pipeline stage has a required skill.
 
-### The Full Chain
 ```
-brainstorming → writing-plans → subagent-driven-development
-                                  ├─ per task: implementer (TDD) + spec-reviewer + code-quality-reviewer
-                                  └─ finishing-a-development-branch
+brainstorming → writing-plans → subagent-driven-development (TDD per task) → finishing-branch
 ```
 
-### Stage-to-Skill Mapping
+**Full reference:** `ops/reference/SKILL_CHAIN.md` — stage-to-skill mapping, enforcement rules, validation chain.
+**Dispatch templates:** `ops/reference/DISPATCH_TEMPLATES.md` — exact prompts for Claude subagents, Codex CLI, reviewers.
 
-| Pipeline Stage | Required Skill | Protocol Summary |
-|---|---|---|
-| **UNDERSTAND** | `superpowers:brainstorming` | 9-step: explore context → ask questions one-at-a-time → propose 2-3 approaches → present design → write spec → spec review loop → user approval. HARD GATE: no code until design approved. Terminal state: invokes writing-plans. |
-| **SPEC** | `superpowers:writing-plans` | Write bite-sized TDD tasks (2-5 min each step). Exact file paths, complete code in plan, exact test commands. Plan review loop via plan-document-reviewer subagent. Save to `docs/superpowers/plans/`. Terminal state: invokes subagent-driven-development. |
-| **BRANCH** | `superpowers:using-git-worktrees` | Create isolated workspace before any implementation. Required by both executing-plans and subagent-driven-development. |
-| **IMPLEMENT** | `superpowers:subagent-driven-development` | Fresh subagent per task. TWO-STAGE review after each: spec compliance first, then code quality. Implementer uses TDD skill. Never dispatch parallel implementers (conflicts). Model selection: cheap for mechanical, capable for integration. |
-| **IMPLEMENT (per task)** | `superpowers:test-driven-development` | RED: write failing test → verify it fails → GREEN: minimal code → verify it passes → REFACTOR. Iron law: NO production code without a failing test first. Code before test? Delete it, start over. |
-| **VERIFY** | `superpowers:verification-before-completion` | No completion claims without fresh test output. Run command → read output → verify 0 failures → THEN claim. "Should pass" = lying, not verifying. |
-| **REVIEW** | `superpowers:requesting-code-review` | Dispatch superpowers:code-reviewer subagent with BASE_SHA, HEAD_SHA, description. Act on feedback: fix Critical immediately, fix Important before proceeding, note Minor. |
-| **FIX (parallel)** | `superpowers:dispatching-parallel-agents` | One agent per independent problem domain. Focused prompt, specific scope, clear constraints. Review all fixes for conflicts before integrating. |
-| **MERGE** | `superpowers:finishing-a-development-branch` | Verify tests pass → present 4 options (merge/PR/keep/discard) → execute choice → cleanup worktree. Never proceed with failing tests. |
-
-### Key Skill Rules (from reading actual skill content)
-
-**brainstorming:**
-- Ask ONE question per message (not multiple)
-- Prefer multiple-choice questions
-- Always propose 2-3 approaches with tradeoffs
-- Spec review loop: dispatch reviewer, fix issues, re-dispatch, max 5 iterations
-- ONLY transitions to writing-plans — never to implementation skills
-
-**writing-plans:**
-- Each step is ONE action (2-5 minutes): "write test", "run it", "implement", "verify", "commit"
-- Complete code in the plan — not "add validation" but the actual code
-- Exact file paths, exact commands, exact expected output
-- Plan review loop with plan-document-reviewer subagent
-- Plan header MUST reference subagent-driven-development or executing-plans
-
-**subagent-driven-development:**
-- Fresh subagent per task (never reuse across tasks — context pollution)
-- Provide full task text to subagent (never make them read the plan file)
+Key facts (tested):
+- Claude subagents CAN load skills via `Skill` tool (tell them to invoke it)
+- Codex CLI CANNOT — embed protocol rules directly in prompt
+- Sonnet follows TDD when told to invoke the skill (tested on format_cost_usd)
 - TWO-STAGE review: spec compliance FIRST, then code quality (never reverse)
-- If spec reviewer finds issues → implementer fixes → spec reviewer re-reviews → THEN quality review
-- Implementer statuses: DONE, DONE_WITH_CONCERNS, NEEDS_CONTEXT, BLOCKED — handle each
-- Model selection: cheap for mechanical, capable for judgment
+- "Should pass" = lying. Must have actual test output showing 0 failures.
 
-**test-driven-development:**
-- Iron law: NO production code without failing test first
-- Wrote code before test? DELETE IT. Start over. No "keeping as reference"
-- Verify RED (test fails correctly) before writing GREEN (implementation)
-- Verify GREEN (test passes) before REFACTOR
-- Every test must be watched failing — if it passes immediately, it tests nothing
+## Meta Rules
 
-**verification-before-completion:**
-- "Should pass" / "looks correct" / "I'm confident" = LYING
-- Must run the actual command, read the actual output, confirm 0 failures
-- Applies to: tests, lint, build, type check, bug fixes, agent output, requirements
-- Before committing, PR creation, task completion, or any positive statement
+**Full reference:** `ops/reference/SKILL_CHAIN.md` and `ops/reference/DISPATCH_TEMPLATES.md`
 
-**finishing-a-development-branch:**
-- Always verify tests BEFORE presenting options
-- Present exactly 4 options: merge locally, create PR, keep as-is, discard
-- Require typed "discard" confirmation for option 4
-- Clean up worktree for options 1 and 4 only
+### Agent Capabilities (tested)
+| Capability | Claude Subagent | Codex CLI |
+|---|---|---|
+| Load skills via Skill tool | YES | NO — embed in prompt |
+| Follow TDD | YES (sonnet tested) | Untested |
+| Sub-subagents | NO | YES (multi_agent) |
+| File ownership enforcement | Via prompt only | Via prompt only |
 
-### Skills for Briefing Coding Agents
-
-When dispatching an implementer subagent, tell it to follow:
-1. `superpowers:test-driven-development` — for the coding approach
-2. Project test patterns from this CLAUDE.md — for auth mocking, venv path, etc.
-3. The exact task from the plan — with full code and file paths
-
-### PR Review Pipeline
-
-After creating any PR, dispatch in parallel:
-1. `superpowers:code-reviewer` — architecture + requirements (probation)
-2. `pr-review-toolkit:review-pr` — comprehensive multi-agent (untested)
-3. `pr-review-toolkit:pr-test-analyzer` — test coverage (untested)
-
-Then dispatch a meta-reviewer (haiku, cheap) to verify reviews are thorough — not just "looks good."
-
-## ═══════════════════════════════════════════
-## META RULES: Skill Enforcement Across Agent Types
-## ═══════════════════════════════════════════
-
-### What Each Agent Type Can Do
-
-| Capability | Claude Subagent | Codex CLI | Gemini CLI |
-|---|---|---|---|
-| Use `Skill` tool to load skills | **YES** (tested) | NO | Untested |
-| Follow TDD when told to | **YES** (tested with sonnet) | Untested | Untested |
-| Dispatch sub-subagents | NO (no Agent tool) | YES (multi_agent=true) | Untested |
-| Use worktree isolation | Via `isolation: "worktree"` param | Manual git branch | Untested |
-| Access MCP servers | YES (inherits parent config) | YES (own config) | Untested |
-
-### Enforcement Strategy by Agent Type
-
-**Claude Subagents (can load skills):**
-In the dispatch prompt, TELL the agent to invoke the Skill tool:
+### Validation Chain (after every doer completes)
 ```
-"Before writing any code, invoke the Skill tool with skill 'superpowers:test-driven-development'
-and follow the protocol exactly."
+DOER (TDD) → TDD CHECKER (haiku) → SPEC REVIEWER (sonnet) → QUALITY REVIEWER (sonnet) → MERGE
 ```
-The agent will load the full skill content and follow it. Tested and confirmed working.
+Fail → re-dispatch doer. Fail twice → escalate model. Fail again → escalate to user.
 
-**Codex CLI (cannot load skills):**
-Embed the skill's key rules directly in the prompt. Codex can't load skills, so you must
-BE the skill for it. Include:
-- The exact protocol steps (RED → verify RED → GREEN → verify GREEN → REFACTOR)
-- The iron law ("no production code without a failing test first")
-- The verification rules ("run the test, show the output, confirm 0 failures")
-- The exact test commands for this project
-
-**Any untested agent type:**
-Before using on real work, run a trivial test (like the format_cost TDD test) to verify:
-1. Can it load skills? (try Skill tool)
-2. Can it follow a protocol when briefed in the prompt?
-3. Does it report honestly when it skips steps?
-
-### Validation Agents
-
-After ANY doer agent completes work, dispatch a validation agent that checks:
-
-**For TDD compliance (dispatch a haiku checker):**
-```
-"Read the git diff for this commit. Verify:
-1. Every new function has a corresponding test
-2. Tests exist in test files, not inline
-3. Test names describe behavior ('test_rejects_empty_email' not 'test1')
-4. No production code without test coverage
-Report any TDD violations."
-```
-
-**For spec compliance (from subagent-driven-development):**
-```
-"Read the original issue/spec and the git diff. Verify:
-1. Every acceptance criterion from the issue is met
-2. Nothing extra was added that wasn't in the spec (YAGNI)
-3. Files changed match what was expected
-Report any spec violations."
-```
-
-**For code quality (from subagent-driven-development):**
-```
-"Read the git diff. Check:
-1. Repository pattern followed (data access in repositories/, logic in services/)
-2. Async SQLAlchemy used correctly (no sync calls)
-3. Auth context handled properly
-4. No hardcoded secrets
-5. Proper error handling (not swallowing exceptions)
-Report any quality violations."
-```
-
-### Dispatch Template with Skill Enforcement
-
-When dispatching a Claude subagent for coding:
-```
-Agent tool:
-  subagent_type: "general-purpose"
-  model: "sonnet" (mechanical) or "opus" (judgment)
-  prompt: |
-    You are implementing [task description].
-
-    REQUIRED: Before writing any code, invoke the Skill tool with skill
-    "superpowers:test-driven-development" and follow the RED-GREEN-REFACTOR
-    protocol exactly. No exceptions.
-
-    Project context:
-    - Python venv: .venv/bin/python (NOT system python)
-    - Test command: .venv/bin/python -m pytest tests/unit/ -q
-    - Auth pattern: override `authenticate` dependency with mock RequestContext
-    - Repository pattern: data in repositories/, logic in services/
-
-    Task: [full task text from plan]
-
-    Files to create/modify: [exact paths]
-
-    When done, report:
-    - Status: DONE / DONE_WITH_CONCERNS / NEEDS_CONTEXT / BLOCKED
-    - Tests: [count] passing, [count] failing
-    - What you changed and why
-```
-
-When dispatching Codex CLI (no Skill tool):
-```
-codex exec "
-You are implementing [task description].
-
-MANDATORY PROTOCOL - Test-Driven Development:
-1. Write the failing test FIRST in tests/unit/[path]
-2. Run it: .venv/bin/python -m pytest tests/unit/[test_file] -v
-3. Confirm it FAILS (show output)
-4. Write MINIMAL implementation to pass
-5. Run test again, confirm it PASSES (show output)
-6. Commit
-
-IRON LAW: If you write production code before its test, DELETE IT and start over.
-
-Project rules:
-- Python venv at .venv/bin/python
-- Repository pattern: data access in repositories/, business logic in services/
-- All DB operations async (SQLAlchemy 2.0 async)
-
-Task: [full task text]
-"
-```
-
-### Validation Chain
-
-Every piece of work goes through this validation chain:
-
-```
-DOER AGENT (follows TDD skill)
-    ↓
-TDD COMPLIANCE CHECKER (haiku, cheap — did the doer actually follow TDD?)
-    ↓
-SPEC COMPLIANCE REVIEWER (sonnet — does the work match the issue?)
-    ↓
-CODE QUALITY REVIEWER (sonnet — does the work meet architecture standards?)
-    ↓
-MERGE (only if all three validators pass)
-```
-
-If any validator fails, the doer agent is re-dispatched with the failure feedback.
-If the doer fails twice on the same issue, escalate to a more capable model.
-If the more capable model fails, escalate to the user.
+### Issue Tracing (enforced)
+- Every piece of work MUST have a GitHub issue number
+- Every commit message references: `(#issue)`
+- Every PR links to the issue
+- Every agent dispatch prompt includes the issue number
+- `gh issue close {N}` after merge
 
 ## Truth Sources
 
