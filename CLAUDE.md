@@ -35,35 +35,53 @@ Quality > cost for a production pipeline.
 
 **Front-loading rule:** Read ALL issues in the current wave upfront. Prep ALL specs before dispatching ANY implementation. This way each agent dispatch is instant — no expensive thinking mid-flight.
 
-## Control Loop
+## Control Loops (outcome-based, pipelined)
 
+**Full reference:** `ops/reference/LOOP_ARCHITECTURE.md`
+
+### Loop Hierarchy
+| Loop | Outcome | Exit When |
+|------|---------|-----------|
+| **Outer** | Demo-ready | 35/35 Project 11 items Done |
+| **Wave** | Wave complete | All PKTs + WRAP merged for wave |
+| **PKT** | PR merged | PR merged to main, issue closed |
+| **Implement** | Tests pass | TDD checker + spec reviewer approve |
+| **Review** | Quality gate | 0 Critical + 0 Important remaining |
+
+### Pipelining (what can overlap)
+- **SPEC overlaps with anything** — read-only, no conflicts, front-load aggressively
+- **IMPLEMENT waits for prior PKT merge** — code depends on contracts in main
+- **REVIEW runs parallel** — multiple reviewers on same PR
+- **MERGE is strictly sequential** — one at a time to main
+
+### WIP Limits
+| SPEC: 3 | IMPLEMENT: 1 | REVIEW: 3 | MERGE: 1 |
+
+### The Big Win
+Front-load ALL specs at wave start. D2-02 and D2-03 specs can be written NOW
+while PR #166 is being fixed and D2-01 is being reviewed. When each PKT merges,
+the next implementation starts INSTANTLY.
+
+### Visibility Dashboard (maintain in ops/PIPELINE_STATE.md)
 ```
-┌─→ 1. CHECK STATE      read ops/PIPELINE_STATE.md (30 sec)
-│   2. SELECT            pick next Project 11 item (your judgment)
-│   3. FRONT-LOAD        read issue + referenced docs + codebase context
-│   4. DISPATCH          send to agent with full context
-│   5. WHILE WAITING     prep the NEXT task (never idle)
-│   6. RECEIVE           auto-notification when agent completes
-│   7. VERIFY            dispatch checker agent (sonnet)
-│   8. UPDATE STATE      ops/, Project 11 board, GitHub issues
-└── 9. REPEAT
+═══ DEMO-READY: 5/35 ═══════════════════ ETA: ~20h
+WAVE D2: 1/5 ──────────────────────── ETA: ~3h
+  PKT    │ Phase    │ Next action
+  PR #166│ FIXING   │ dispatch C1+C2 fix agents
+  D2-01  │ SPEC OK  │ review YOLO PR #37
+  D2-02  │ CAN SPEC │ front-load spec now
+  D2-03  │ CAN SPEC │ front-load spec now
+MONITORS: 3 crons │ AGENTS: [count] │ PREP: [queued specs]
 ```
 
-**Max in-flight:** 2-3 items. More than that = losing track.
+**If idle with nothing prepped, something is wrong.**
 
-**Parallel prep pattern:** While a coding agent works on Task N, dispatch a background
-sonnet agent to prep Task N+1 (read issue, identify files, draft spec outline).
-When Task N completes, Task N+1 dispatch is instant — no expensive thinking delay.
+## Exit Conditions
 
-**Persistent monitors:** 3 cron jobs + background prep agent should be running at all times.
-If you find yourself idle with no monitors, something is wrong.
-
-## Exit Conditions (when to stop the loop)
-
-- **User decision needed:** architecture choice, priority call, scope change
-- **Risk materialized:** agent keeps failing, infrastructure broken, tests can't run
-- **Wave complete:** all PKTs + WRAP in a wave are Done → brief user, confirm next wave
-- **Session ending:** commit ops state, brief user on exactly where things stand
+- **User decision needed:** architecture, priority, scope
+- **Risk materialized:** agent keeps failing, infra broken
+- **Wave complete:** brief user, confirm next wave
+- **Session ending:** commit ops state, brief user
 - **NEVER exit silently** — always leave ops/PIPELINE_STATE.md current
 
 **You NEVER:**
@@ -623,11 +641,12 @@ Mark tasks `in_progress` when dispatching, `completed` when verified.
 
 ### Hard Conflict Rules (from DAG analysis — see ops/reference/DAGS_AND_CONFLICTS.md)
 1. **NEVER dispatch parallel implementers on the same branch** — sequential only
-2. **NEVER start a PKT until the prior PKT is merged to main** — strictly sequential within a wave
-3. **NEVER create new work without checking for existing PRs** — may duplicate
-4. **File ownership must be declared in the spec** — if two tasks touch the same file, merge them
-5. **D2-02+ must branch from main AFTER PR #166 merges** — PR #166 has partial D2 work
-6. **Commit ops/ after every significant action** — recovery depends on it
+2. **NEVER start IMPLEMENTING PKT N+1 until PKT N is merged** — code depends on contracts in main
+3. **CAN start SPEC for PKT N+1 while PKT N is implementing** — spec is read-only, front-load it
+4. **NEVER create new work without checking for existing PRs** — may duplicate
+5. **File ownership must be declared in the spec** — if two tasks touch the same file, merge them
+6. **D2-02+ implementation must branch from main AFTER PR #166 merges** — but D2-02 SPEC can start now
+7. **Commit ops/ after every significant action** — recovery depends on it
 
 ## Recovery Protocol
 
