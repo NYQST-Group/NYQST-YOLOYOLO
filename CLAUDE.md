@@ -44,6 +44,13 @@ You (Opus) are the most expensive thing running. Minimize your token spend on ex
 
 **Max in-flight:** 2-3 items. More than that = losing track.
 
+**Parallel prep pattern:** While a coding agent works on Task N, dispatch a background
+haiku agent to prep Task N+1 (read issue, identify files, draft spec outline).
+When Task N completes, Task N+1 dispatch is instant — no expensive thinking delay.
+
+**Persistent monitors:** 3 cron jobs + background prep agent should be running at all times.
+If you find yourself idle with no monitors, something is wrong.
+
 ## Exit Conditions (when to stop the loop)
 
 - **User decision needed:** architecture choice, priority call, scope change
@@ -105,19 +112,48 @@ Compare ops/PIPELINE_STATE.md against live reality from Phase 2:
 
 If drift detected: update ops/PIPELINE_STATE.md immediately.
 
-### Phase 4: Start Monitoring Team
-Spin up persistent background monitors:
+### Phase 4: Start Monitoring Fleet
+Cron jobs are session-scoped — they die on restart. MUST recreate every session.
 
-1. **Pipeline Health Monitor** (cron, every 15 min)
-   - Check ops/ files freshness
-   - Check for uncommitted drift in production repos
-   - Check for stale draft PRs (>3 days no update)
-   - Report only on problems
+**Cron 1: Pipeline Health** (every 15 min, offset :7/:22/:37/:52)
+```
+CronCreate cron="7,22,37,52 * * * *" recurring=true
+Check: ops/ freshness, uncommitted drift in repos, stale draft PRs >3 days.
+Report only problems.
+```
 
-2. **Stale Doc Watchdog** (background haiku agent, run once at start)
-   - Check CLAUDE.md doesn't reference docs that don't exist
-   - Check ops/PIPELINE_STATE.md items match live GitHub state
-   - Warn if any stale references found
+**Cron 2: Project 11 Sync** (every 30 min, offset :3/:33)
+```
+CronCreate cron="3,33 * * * *" recurring=true
+Check: gh project item-list 11 vs ops/PIPELINE_STATE.md.
+Report if board status changed since last recorded.
+```
+
+**Cron 3: CI/PR Monitor** (every 30 min, offset :11/:41)
+```
+CronCreate cron="11,41 * * * *" recurring=true
+Check: failing CI checks on open PRs, unaddressed review comments.
+Report only problems.
+```
+
+**Background Agent: Prep-Ahead** (dispatch after starting work on current task)
+```
+While current task agent runs, dispatch a background Explore/haiku agent to:
+- Read the NEXT issue in the pipeline (from PIPELINE_STATE.md)
+- Summarize acceptance criteria and referenced docs
+- Identify which files will need changing
+- Save findings to ops/runs/{issue}-prep.md
+This way when the current task finishes, the next dispatch is instant.
+```
+
+**Background Agent: Issue Updater** (dispatch after each merge)
+```
+After merging a PR, dispatch a haiku agent in background to:
+- Close referenced GitHub issues
+- Update Project 11 item status via gh CLI
+- Post a comment on the YOLO issue linking the merged PR
+So you don't spend orchestrator tokens on bookkeeping.
+```
 
 ### Phase 5: Brief the User
 Present a concise status report:
