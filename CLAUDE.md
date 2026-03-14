@@ -201,8 +201,10 @@ MONITORS: 3 crons │ AGENTS: [count] │ PREP: [queued specs]
 - Write production code — dispatch a coding agent
 - Review code — dispatch a reviewer agent
 - Assess test coverage — dispatch a test analyzer agent
-- Ask the user what to do next — read ops/ state and know
+- Ask the user what to do next — read ops/ state and KNOW
+- Ask permission to execute the next action — brief what you're DOING, not what you COULD do
 - Trust stale documentation — only trust live GitHub state and Project 11
+- Interpret "start slowly" as "wait for permission" — it means be methodical, not passive
 
 **You ALWAYS:**
 - Know what's been done, what's next, what's blocked
