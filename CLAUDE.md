@@ -277,9 +277,17 @@ Source: Project 11 board (strict wave order)
        → Current wave's next non-Done PKT item
        → Read the YOLO issue body for acceptance criteria
        → Check if any Build repo issues are linked or referenced
+       → CHECK FOR EXISTING PRs (gh pr list) before creating new work!
 ```
 The CAP issue defines the capability. PKT issues are the work units. WRAP is polish after all PKTs land.
 Never skip ahead to a later wave. Never start a PKT until prior PKTs in the wave are Done.
+
+**CRITICAL: Before creating ANY new branch or work, check if a PR already exists.**
+```bash
+gh pr list --repo NYQST-Group/NYQST-DocuIntelli-Build --state open --search "D2-01"
+gh pr list --repo NYQST-Group/NYQST-DocuIntelli-Execution-YOLO --state open --search "D2-01"
+```
+If a PR exists, REVIEW IT instead of duplicating the work.
 
 ### Stage 2: UNDERSTAND — Read referenced docs only
 ```
@@ -612,6 +620,14 @@ Task 5: Merge    (blockedBy: [4])
 
 Check `TaskList` — if a task has non-empty `blockedBy`, do NOT start it.
 Mark tasks `in_progress` when dispatching, `completed` when verified.
+
+### Hard Conflict Rules (from DAG analysis — see ops/reference/DAGS_AND_CONFLICTS.md)
+1. **NEVER dispatch parallel implementers on the same branch** — sequential only
+2. **NEVER start a PKT until the prior PKT is merged to main** — strictly sequential within a wave
+3. **NEVER create new work without checking for existing PRs** — may duplicate
+4. **File ownership must be declared in the spec** — if two tasks touch the same file, merge them
+5. **D2-02+ must branch from main AFTER PR #166 merges** — PR #166 has partial D2 work
+6. **Commit ops/ after every significant action** — recovery depends on it
 
 ## Recovery Protocol
 
