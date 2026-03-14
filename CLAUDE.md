@@ -118,6 +118,63 @@ Then execute the first action without asking.
 Git remotes: `origin` = own remote, `upstream` = parent repo.
 
 ## ═══════════════════════════════════════════
+## GIT CONTEXT: How Agents Access Repos
+## ═══════════════════════════════════════════
+
+### The Problem
+YOLOYOLO is your CWD but agents inherit it. They start in `/Users/markforster/NYQST-YOLOYOLO/`
+which is NOT where the code is. You MUST tell agents which repo to work in.
+
+### Tested Facts (from agent probing)
+1. Agents CAN `cd` to any repo on disk — full git read/write access
+2. Agents CAN use `gh` CLI to read issues, create PRs, etc.
+3. Agents CAN create/delete branches in production repos
+4. `.venv` lives ONLY in Build repo — worktrees don't get their own
+5. Tests run from worktrees using absolute venv path: `/Users/markforster/NYQST-DocuIntelli-Build/.venv/bin/python`
+6. `isolation: "worktree"` Agent tool param FAILS from YOLOYOLO (no git repo before init)
+7. Worktrees must be created manually via `git worktree add` from the Build repo
+
+### Worktree Pattern for Agent Isolation
+
+Before dispatching a coding agent, create the worktree yourself:
+```bash
+cd ~/NYQST-DocuIntelli-Build
+git worktree add /tmp/pkt-{issue}-wt -b feat/{issue}-{desc} {base_branch}
+```
+
+Choose the right base:
+- New feature from main: `git worktree add ... main`
+- Fix for existing PR: `git worktree add ... {pr_branch}` (e.g., `codex/yolo-build-fix`)
+- IMPORTANT: worktree from `main` won't have uncommitted PR work
+
+Then tell the agent:
+```
+Work ONLY in /tmp/pkt-{issue}-wt/
+Python venv: /Users/markforster/NYQST-DocuIntelli-Build/.venv/bin/python
+Test command: cd /tmp/pkt-{issue}-wt && /Users/markforster/NYQST-DocuIntelli-Build/.venv/bin/python -m pytest tests/unit/ -q
+```
+
+After agent completes, verify and clean up:
+```bash
+cd /Users/markforster/NYQST-DocuIntelli-Build
+git worktree remove /tmp/pkt-{issue}-wt   # after merging/pushing
+```
+
+### When NOT to Use Worktrees
+- Quick fixes to an existing PR branch — just tell the agent to `cd` to the repo
+- Read-only research — no isolation needed
+- Review agents — they only read, no conflicts possible
+
+### Context Checklist for Every Agent Dispatch
+Every dispatch prompt MUST include:
+1. **Working directory**: exact path (`cd /Users/markforster/NYQST-DocuIntelli-Build` or worktree path)
+2. **Branch**: which branch to work on or that it's a fresh worktree
+3. **Venv path**: `/Users/markforster/NYQST-DocuIntelli-Build/.venv/bin/python`
+4. **Test command**: full command with absolute paths
+5. **Scope**: which files to touch, which NOT to touch
+6. **Issue reference**: `gh issue view {N} --repo NYQST-Group/{repo}`
+
+## ═══════════════════════════════════════════
 ## BUILD PROCESS: End-to-End Workflow
 ## ═══════════════════════════════════════════
 

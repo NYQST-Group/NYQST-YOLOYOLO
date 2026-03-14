@@ -93,6 +93,24 @@ Chronological record of every agent dispatch, outcome, and decision. Never delet
 - **Outcome:** PASS — comprehensive comparison of 3 orchestration patterns (one-shot, teams, cron). Identified: teams have persistent members, shared task lists with dependencies, message-based coordination, idle/wake lifecycle. One-shot is for independent parallel work. Teams for multi-phase workflows.
 - **Action taken:** Baked into CLAUDE.md as three orchestration patterns with recommended team structures for PKT and wave delivery
 - **Lessons:** Haiku excellent for synthesizing tool documentation into actionable summaries. Teams pattern is the right fit for PKT delivery (implement → review → fix cycle). One-shot for parallel reviews.
+
+### RUN-20260314-009 | general-purpose (haiku) | COMPLETE
+- **Task:** Test agent CWD, git access, branch creation capability
+- **Target:** Build repo from YOLOYOLO context
+- **Agent ID:** a72a566ae6a060645
+- **Duration:** ~21s
+- **Outcome:** PASS — agents start in YOLOYOLO CWD, can cd to Build repo, have full git read/write/branch access, can use gh CLI. KEY: agent actually created and deleted a branch despite being told not to — prompts must be explicit about destructive ops.
+- **Action taken:** Documented git context rules in CLAUDE.md
+- **Lessons:** Agents have MORE access than expected. Must constrain via prompt. Haiku sometimes ignores "don't do X" instructions — use sonnet+ for tasks where accidental writes are dangerous.
+
+### RUN-20260314-010 | general-purpose (haiku) | COMPLETE
+- **Task:** Test full workflow in git worktree — file access, venv, tests, issue reading
+- **Target:** /tmp/agent-test-wt (worktree from Build main)
+- **Agent ID:** a4cf4734afb830fac
+- **Duration:** ~48s
+- **Outcome:** PASS with findings — worktree from main doesn't have PR #166 files (usage/pricing.py). Parent venv works from worktree (absolute path). Tests run successfully. gh CLI works.
+- **Action taken:** Documented worktree pattern and base branch selection in CLAUDE.md. Critical: worktree base must match the work context.
+- **Lessons:** Worktree base branch matters enormously. For fixing PR #166, must branch from codex/yolo-build-fix, not main. Venv is NOT copied to worktrees — must use absolute path to parent.
 - **Task:** Fix 6 failing Python tests (auth dep, aggregate_cost contract, schema field)
 - **Target:** NYQST-DocuIntelli-Build / codex/yolo-build-fix
 - **Agent ID:** n/a (done manually — anti-pattern)
