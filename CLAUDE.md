@@ -58,6 +58,50 @@ When done: commit ops/ state and exit.
 "
 ```
 
+### Existing Infrastructure (DON'T REINVENT)
+
+NYQST has already built agent dispatch, telemetry, and orchestration infra.
+Use these patterns — see memory `reference_existing_infra` for full details.
+
+| What | Where | Use for |
+|------|-------|---------|
+| **Headless Codex dispatch** | `nyqst-demo-agentops-template/scripts/codex/no_context_exec.sh` | Stateless agent runs with isolated CODEX_HOME |
+| **SUBAGENT_TICKET format** | `nyqst-demo-agentops-template/docs/templates/SUBAGENT_TICKET.md` | Structured work dispatch (title, priority, deliverables, acceptance criteria, timebox) |
+| **TRACK_BRIEF format** | `nyqst-demo-agentops-template/docs/templates/TRACK_BRIEF.md` | Track scope definition for lieutenants |
+| **Telemetry schemas** | `nyqst-demo-agentops-template/contracts/schemas/` | Run, Artifact, RunEvent, ProvenanceManifest JSON schemas |
+| **Agent role prompts** | `nyqst-demo-agentops-template/docs/10_system_prompt_templates.md` | Orchestrator, Track Owner, Integrator, QA system prompts |
+| **Codex profiles** | `nyqst-demo-agentops-template/.codex/config.toml` | `demo-orchestrator` (parallel, write) and `no-context-review` (read-only, stateless) |
+| **Batch Claude CLI** | `NYQST-Claude-invoke/tools/claude_review_rulepacks.py` | ThreadPoolExecutor concurrency, resume, OAuth injection, cost tracking |
+| **OAuth headless auth** | `NYQST-Claude-invoke/tools/claude_review_rulepacks.py` | `_load_claude_oauth_access_token` via file descriptor |
+| **Anti-collision rules** | `nyqst-demo-agentops-template/AGENTS.md` | Track ownership, file-path exclusivity |
+| **Contract validation CI** | `nyqst-demo-agentops-template/scripts/ci/validate_contracts.py` | Schema-based fixture validation |
+
+### Scale Architecture (using existing patterns)
+
+```
+DIRECTOR (opus, this session)
+  ├─ Reads: CLAUDE.md + ops/ + PIPELINE_STATE.md
+  ├─ Dispatches lieutenants via: claude -p --model opus
+  ├─ Dispatches headless Codex via: no_context_exec.sh (from agentops-template)
+  ├─ Dispatches batch reviews via: claude_review_rulepacks.py pattern (from Claude-invoke)
+  ├─ Tracks: RunEvent schema for telemetry, Run manifests for audit
+  └─ Monitors: cron health checks + PIPELINE_STATE.md dashboard
+
+LIEUTENANT (opus, claude -p session)
+  ├─ Reads: CLAUDE.md + TRACK_BRIEF for their scope
+  ├─ Dispatches doers via: Agent tool (sonnet subagents)
+  ├─ Dispatches doers via: no_context_exec.sh (headless Codex)
+  ├─ Uses: SUBAGENT_TICKET.md format for each dispatch
+  ├─ Validates: contract schemas after each task
+  └─ Reports: updates ops/RUN_LOG.md + ops/PIPELINE_STATE.md
+
+DOER (sonnet subagent or headless Codex)
+  ├─ Reads: SUBAGENT_TICKET with acceptance criteria + timebox
+  ├─ Follows: TDD skill (via Skill tool or embedded in prompt)
+  ├─ Owns: specific files only (anti-collision from AGENTS.md)
+  └─ Reports: DONE/DONE_WITH_CONCERNS/NEEDS_CONTEXT/BLOCKED
+```
+
 ### How This Scales
 | Scale | Pattern |
 |-------|---------|
