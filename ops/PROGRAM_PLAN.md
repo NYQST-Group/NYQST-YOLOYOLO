@@ -156,6 +156,64 @@ Next: [what I'm doing, not what I could do]
 
 ---
 
+## Operating Model — What's Running At Any Moment
+
+### Standing Team
+| Role | Model | Dispatch | Purpose |
+|------|-------|----------|---------|
+| **Director** (me) | opus | This session | Decisions, approvals, escalations, briefings |
+| **Build Lieutenant** | opus | `claude -p --model opus` | Manages current PKT delivery cycle with its own sonnet pod |
+| **Prep Lieutenant** | opus | `claude -p --model opus` | Front-loads specs for next 2-3 PKTs in parallel |
+| **Ops Agent** | sonnet | Background subagent | GitHub issue updates, board sync, PR comments, triage |
+| **Triage Agent** | sonnet | Background subagent (periodic) | Maps 189 issues to deliverables, labels, deduplicates |
+| **Monitors** | sonnet | 3 crons | Pipeline health, Project 11 sync, CI/PR status |
+
+### What I Do vs What Delegates Do
+| Activity | Who | Why |
+|---|---|---|
+| Decide what to build next | Me | Strategy, judgment |
+| Approve specs before implementation | Me | Quality gate |
+| Handle escalations from lieutenants | Me | Judgment under uncertainty |
+| Brief Mark | Me | Accountability |
+| Adjust priorities based on risk | Me | Program management |
+| Write code | Build LT's doer pod | I never code |
+| Review code | Build LT's reviewer pod | I never review |
+| Update GitHub issues/board | Ops agent | Bookkeeping |
+| Triage 189 open issues | Triage agent | Bulk analysis |
+| Front-load specs | Prep lieutenant | Judgment but not my bottleneck |
+| Run/verify tests | Build LT's pod | Mechanical verification |
+| Monitor drift | Crons | Automated, periodic |
+
+### Communication Flow
+```
+Lieutenants → write to ops/ files → I read aggregate state
+Ops agent → updates GitHub → cron alerts me to changes
+Monitors → silent when healthy, alert on problems only
+Me → dispatch lieutenants via TRACK_BRIEF
+Me → dispatch ops/triage via SUBAGENT_TICKET
+```
+
+### Typical Session Snapshot
+```
+ACTIVE:
+  [BUILD LT]  PKT D2-01 task 2/3 implementing    ← sonnet doer in worktree
+  [PREP LT]   D2-02 spec being written            ← reading issue #8
+  [OPS]       Closing issue #167 after C1 merge    ← background sonnet
+  [CRON×3]    Monitoring silently                  ← every 15-30 min
+  [ME]        Reviewing D2-03 issue body           ← front-loading while waiting
+```
+
+### Scaling Stages
+| Stage | What's running | Prove before advancing |
+|-------|---------------|----------------------|
+| **1. Solo** | Me + direct sonnet subagents | PR #166 fix→merge cycle works |
+| **2. One lieutenant** | Me + Build LT (opus) + sonnet pod | D2-01 delivered through full pipeline |
+| **3. Two lieutenants** | Me + Build LT + Prep LT | Parallel wave work without conflicts |
+| **4. Full team** | Me + 2 LTs + Ops + Triage + Monitors | D2 wave completes on time |
+| **5. Wave-per-lieutenant** | Me + N lieutenants (one per wave) | Only if D2 proves the model |
+
+**Current stage: 1 (Solo).** Must prove PR #166 cycle before scaling.
+
 ## Current Focus Areas
 
 ### Immediate (this session)
