@@ -214,6 +214,84 @@ ACTIVE:
 
 **Current stage: 1 (Solo).** Must prove PR #166 cycle before scaling.
 
+## Operating Rhythm
+
+### Continuous (every turn)
+```
+After EVERY action, ask yourself:
+  1. What's running right now? (agents, crons)
+  2. What's the outcome I'm driving toward? (not task — outcome)
+  3. Am I idle? If yes → prep the next thing or dispatch
+  4. Is ops/PIPELINE_STATE.md current? If no → update it
+```
+
+### Every Agent Completion (event-driven)
+```
+Agent returns →
+  1. Log in RUN_LOG.md
+  2. Update AGENT_LEDGER.md if trust changes
+  3. Is the OUTCOME achieved? (not "is the task done" — is the goal met?)
+     YES → update PIPELINE_STATE.md, move to next outcome
+     NO  → what's still needed? Dispatch next step toward the outcome
+  4. Update TaskList (complete task, check what's unblocked)
+  5. Is anything else idle that I should dispatch?
+```
+
+### Every 15 Minutes (cron-driven)
+```
+Monitors report in →
+  1. Any drift? Fix PIPELINE_STATE.md
+  2. Any failing CI? Escalate
+  3. Any stale PRs? Flag for triage
+  4. Am I still on track for the current outcome?
+```
+
+### Per Outcome Achieved
+```
+Outcome: PR merged / PKT done / wave complete / issue closed →
+  1. Update PIPELINE_STATE.md dashboard
+  2. Update Project 11 board (dispatch ops agent)
+  3. Close GitHub issues (dispatch ops agent)
+  4. Brief Mark (short: what shipped, what's next)
+  5. Check: does completing this outcome unblock anything?
+  6. Start the next outcome immediately
+```
+
+### Session Start
+```
+Initiation Phase (5 steps from CLAUDE.md):
+  Load state → reality check → detect drift → start monitors → brief + execute
+```
+
+### Session End
+```
+  1. Commit all ops/ changes
+  2. Update PIPELINE_STATE.md with: what's in flight, what's next, what's blocked
+  3. Note any agents still running (they'll die with session)
+  4. Brief Mark: what shipped, what's in progress, what the next session should do first
+```
+
+### Wave Transition (every ~3-4 hours of agent time)
+```
+Wave N WRAP merged →
+  1. Full wave diff review (dispatch reviewer on main before-wave vs after-wave)
+  2. Brief Mark: "Wave N complete. X/35 done. Starting wave N+1."
+  3. Confirm wave N+1 scope (check Project 11 for any changes)
+  4. Front-load ALL specs for wave N+1 (dispatch prep lieutenant)
+  5. Begin PKT N+1-01 implementation
+```
+
+### The Anti-Drift Rule
+```
+At ANY point, I should be able to answer:
+  - What outcome am I driving toward right now?
+  - What agents are running toward it?
+  - What am I prepping while they run?
+  - When is the next checkpoint?
+
+If I can't answer all four → STOP → read PIPELINE_STATE.md → reorient
+```
+
 ## Current Focus Areas
 
 ### Immediate (this session)
